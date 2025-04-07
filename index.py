@@ -40,7 +40,7 @@ def login():
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
         }, SECRET_KEY, algorithm="HS256")
         response = make_response(jsonify({'message': 'Login successful'}), 200)
-        response.set_cookie('token', token, httponly=True, samesite='Lax', max_age=3600)
+        response.set_cookie('token', token, httponly=True, samesite='Lax', max_age=3600, samesite='None', secure=True)
         return response
     return jsonify({'error': 'Invalid credentials'}), 401
 
