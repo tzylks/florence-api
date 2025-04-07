@@ -7,3 +7,4 @@ Pillow==10.3.0
 einops==0.8.0
 timm==0.9.16
 psutil==5.9.8
+gunicorn
