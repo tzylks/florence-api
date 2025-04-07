@@ -1,6 +1,6 @@
 import os
 import logging
-import psutil  # For memory usage
+import transformers
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 from transformers import AutoProcessor, AutoModelForCausalLM
@@ -14,6 +14,9 @@ app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Log transformers version
+logger.info(f"Using transformers version: {transformers.__version__}")
 
 # Load secret key from environment variable
 SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "your-secret-key-for-dev-only")
@@ -31,7 +34,6 @@ def load_model():
     if model is None or processor is None:
         try:
             logger.info(f"Loading {model_name} model...")
-            logger.info(f"Memory before loading: {psutil.virtual_memory().percent}% used")
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 torch_dtype=torch_dtype,
@@ -43,7 +45,6 @@ def load_model():
             )
             model.eval()
             logger.info("Model and processor loaded successfully")
-            logger.info(f"Memory after loading: {psutil.virtual_memory().percent}% used")
         except Exception as e:
             logger.error(f"Failed to load model: {str(e)}\n{traceback.format_exc()}")
             raise
@@ -120,7 +121,6 @@ def predict():
         pixel_values = inputs["pixel_values"]
         
         logger.info("Image processed, running model inference...")
-        logger.info(f"Memory before inference: {psutil.virtual_memory().percent}% used")
         with torch.no_grad():
             generated_ids = model.generate(
                 input_ids=input_ids,
@@ -136,7 +136,6 @@ def predict():
             image_size=(image.width, image.height)
         )
         logger.info(f"Caption generated: {result}")
-        logger.info(f"Memory after inference: {psutil.virtual_memory().percent}% used")
         return jsonify({'result': result[task_prompt] if task_prompt in result else result})
     except Exception as e:
         logger.error(f"Error in predict: {str(e)}\n{traceback.format_exc()}")
