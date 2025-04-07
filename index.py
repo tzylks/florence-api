@@ -121,4 +121,20 @@ def predict():
                 input_ids=input_ids,
                 pixel_values=pixel_values,
                 max_new_tokens=1024,
-                num_beams=3
+                num_beams=3,
+                do_sample=False
+            )
+        generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
+        result = processor.post_process_generation(
+            generated_text, 
+            task=task_prompt, 
+            image_size=(image.width, image.height)
+        )
+        logger.info(f"Caption generated: {result}")
+        return jsonify({'result': result[task_prompt] if task_prompt in result else result})
+    except Exception as e:
+        logger.error(f"Error in predict: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'error': 'Server error during prediction'}), 500
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=PORT)
