@@ -1,10 +1,11 @@
 flask
 flask-cors
 pyjwt
-transformers 
-torch    
+transformers
+torch
 Pillow
 einops
 timm
 psutil
 gunicorn
+numpy
