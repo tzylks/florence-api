@@ -40,6 +40,7 @@ def login():
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
         }, SECRET_KEY, algorithm="HS256")
         response = make_response(jsonify({'message': 'Login successful'}), 200)
+        is_secure = os.getenv('FLASK_ENV') != 'development'
         response.set_cookie(
             'token',
             token,
