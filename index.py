@@ -10,7 +10,7 @@ import datetime
 import os
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
 # Load secret key from environment variable
 SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "your-secret-key-for-dev-only")
