@@ -8,3 +8,4 @@ einops==0.8.0
 timm==0.9.16
 psutil==5.9.8
 gunicorn
+flash_attn
