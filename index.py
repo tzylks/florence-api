@@ -60,13 +60,12 @@ def login():
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
         }, SECRET_KEY, algorithm="HS256")
         response = make_response(jsonify({'message': 'Login successful'}), 200)
-        is_secure = os.getenv('FLASK_ENV') != 'development'
         response.set_cookie(
             'token',
             token,
             httponly=True,
-            samesite='None' if is_secure else 'Lax',
-            secure=is_secure,
+            samesite='None',  # Cross-origin compatibility
+            secure=True,      # HTTPS required
             max_age=3600,
             path='/'
         )
@@ -78,13 +77,12 @@ def login():
 @app.route('/logout', methods=['POST'])
 def logout():
     response = make_response(jsonify({'message': 'Logged out'}), 200)
-    is_secure = os.getenv('FLASK_ENV') != 'development'
     response.set_cookie(
         'token',
         '',
         httponly=True,
-        samesite='None' if is_secure else 'Lax',
-        secure=is_secure,
+        samesite='None',
+        secure=True,
         max_age=0,
         path='/'
     )
