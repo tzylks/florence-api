@@ -1,5 +1,6 @@
 import os
 import logging
+import transformers  # Add this line
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 from transformers import CLIPProcessor, CLIPModel
@@ -49,7 +50,7 @@ def predict():
         logger.info(f"Received image: {image_file.filename}")
         image = Image.open(image_file).convert("RGB")
 
-        # Predefined caption candidates (CLIP scores these)
+        # Predefined caption candidates
         candidate_captions = [
             "A dog in a park",
             "A cat on a couch",
@@ -69,10 +70,10 @@ def predict():
         logger.info("Image and text processed, running model inference...")
         with torch.no_grad():
             outputs = model(**inputs)
-            logits_per_image = outputs.logits_per_image  # Image-text similarity scores
-            probs = logits_per_image.softmax(dim=1)      # Convert to probabilities
+            logits_per_image = outputs.logits_per_image
+            probs = logits_per_image.softmax(dim=1)
 
-        # Select the caption with the highest probability
+        # Select the best caption
         best_caption_idx = probs.argmax().item()
         result = candidate_captions[best_caption_idx]
         logger.info(f"Caption selected: {result}")
