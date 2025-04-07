@@ -2,10 +2,8 @@ flask==3.0.3
 flask-cors==4.0.0
 pyjwt==2.8.0
 transformers==4.41.2
-torch==2.3.0+cpu
+torch==2.2.2+cpu  # Downgrade to a stable CPU version
 Pillow==10.3.0
 einops==0.8.0
 timm==0.9.16
 psutil==5.9.8
-gunicorn
-
