@@ -1,5 +1,6 @@
 import os
 import logging
+import psutil  # For memory usage
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 from transformers import AutoProcessor, AutoModelForCausalLM
@@ -11,16 +12,16 @@ import traceback
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
-logging.basicConfig(level=logging.DEBUG)  # Log to Railway console
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Load secret key from environment variable
 SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "your-secret-key-for-dev-only")
-PORT = int(os.getenv("PORT", 8080))  # Railway assigns PORT dynamically
+PORT = int(os.getenv("PORT", 8080))
 
 # Florence-2 setup (lazy-loaded)
-device = "cpu"  # Railway free tier has no GPU
-torch_dtype = torch.float16  # Reduce memory usage
+device = "cpu"
+torch_dtype = torch.float16
 model_name = "microsoft/Florence-2-base"
 model = None
 processor = None
@@ -30,17 +31,19 @@ def load_model():
     if model is None or processor is None:
         try:
             logger.info(f"Loading {model_name} model...")
+            logger.info(f"Memory before loading: {psutil.virtual_memory().percent}% used")
             model = AutoModelForCausalLM.from_pretrained(
-                model_name, 
-                torch_dtype=torch_dtype, 
+                model_name,
+                torch_dtype=torch_dtype,
                 trust_remote_code=True
             ).to(device)
             processor = AutoProcessor.from_pretrained(
-                model_name, 
+                model_name,
                 trust_remote_code=True
             )
-            model.eval()  # Optimize for inference
+            model.eval()
             logger.info("Model and processor loaded successfully")
+            logger.info(f"Memory after loading: {psutil.virtual_memory().percent}% used")
         except Exception as e:
             logger.error(f"Failed to load model: {str(e)}\n{traceback.format_exc()}")
             raise
@@ -103,7 +106,8 @@ def predict():
         logger.warning("No image in request")
         return jsonify({'error': 'No image provided'}), 400
 
-    load_model()  # Lazy load on first request
+    logger.info("Loading model for prediction...")
+    load_model()
 
     try:
         image_file = request.files['image']
@@ -113,10 +117,11 @@ def predict():
         task_prompt = "<CAPTION>"
         inputs = processor(text=task_prompt, images=image, return_tensors="pt").to(device, torch_dtype)
         input_ids = inputs["input_ids"]
-        pixel_values = inputs["pixel_values"]  # Already in float16
+        pixel_values = inputs["pixel_values"]
         
         logger.info("Image processed, running model inference...")
-        with torch.no_grad():  # Reduce memory usage
+        logger.info(f"Memory before inference: {psutil.virtual_memory().percent}% used")
+        with torch.no_grad():
             generated_ids = model.generate(
                 input_ids=input_ids,
                 pixel_values=pixel_values,
@@ -126,15 +131,16 @@ def predict():
             )
         generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
         result = processor.post_process_generation(
-            generated_text, 
-            task=task_prompt, 
+            generated_text,
+            task=task_prompt,
             image_size=(image.width, image.height)
         )
         logger.info(f"Caption generated: {result}")
+        logger.info(f"Memory after inference: {psutil.virtual_memory().percent}% used")
         return jsonify({'result': result[task_prompt] if task_prompt in result else result})
     except Exception as e:
         logger.error(f"Error in predict: {str(e)}\n{traceback.format_exc()}")
         return jsonify({'error': 'Server error during prediction'}), 500
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=PORT)
+    app.run(host="0.0.0.0", port=PORT
