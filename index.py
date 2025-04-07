@@ -6,20 +6,16 @@ from flask_cors import CORS
 from transformers import AutoProcessor, AutoModelForCausalLM
 import torch
 from PIL import Image
-import jwt
-import datetime
 import traceback
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
+CORS(app, supports_credentials=True, origins=["http://localhost:3000"])  # Still needed for cross-origin
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Log transformers version
 logger.info(f"Using transformers version: {transformers.__version__}")
+logger.info(f"Using torch version: {torch.__version__}")
 
-# Load secret key from environment variable
-SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "your-secret-key-for-dev-only")
 PORT = int(os.getenv("PORT", 8080))
 
 # Florence-2 setup (lazy-loaded)
@@ -49,58 +45,8 @@ def load_model():
             logger.error(f"Failed to load model: {str(e)}\n{traceback.format_exc()}")
             raise
 
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-    if email == "test@example.com" and password == "password123":
-        token = jwt.encode({
-            'email': email,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
-        }, SECRET_KEY, algorithm="HS256")
-        response = make_response(jsonify({'message': 'Login successful'}), 200)
-        response.set_cookie(
-            'token',
-            token,
-            httponly=True,
-            samesite='None',  # Cross-origin compatibility
-            secure=True,      # HTTPS required
-            max_age=3600,
-            path='/'
-        )
-        logger.info("User logged in successfully")
-        return response
-    logger.warning("Invalid login attempt")
-    return jsonify({'error': 'Invalid credentials'}), 401
-
-@app.route('/logout', methods=['POST'])
-def logout():
-    response = make_response(jsonify({'message': 'Logged out'}), 200)
-    response.set_cookie(
-        'token',
-        '',
-        httponly=True,
-        samesite='None',
-        secure=True,
-        max_age=0,
-        path='/'
-    )
-    logger.info("User logged out")
-    return response
-
 @app.route('/predict', methods=['POST'])
 def predict():
-    token = request.cookies.get('token')
-    if not token:
-        logger.warning("No token provided")
-        return jsonify({'error': 'Authentication required'}), 401
-    try:
-        jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
-        logger.warning("Invalid or expired token")
-        return jsonify({'error': 'Invalid or expired token'}), 401
-
     if 'image' not in request.files:
         logger.warning("No image in request")
         return jsonify({'error': 'No image provided'}), 400
@@ -138,6 +84,15 @@ def predict():
     except Exception as e:
         logger.error(f"Error in predict: {str(e)}\n{traceback.format_exc()}")
         return jsonify({'error': 'Server error during prediction'}), 500
+
+# Optional: Keep /login and /logout if you might need auth later
+# @app.route('/login', methods=['POST'])
+# def login():
+#     ... (unchanged from previous)
+#
+# @app.route('/logout', methods=['POST'])
+# def logout():
+#     ... (unchanged from previous)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=PORT)
